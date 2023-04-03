@@ -10,21 +10,8 @@ export type UserDTO = any;
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  private readonly users = [
-    {
-      userId: 1,
-      username: 'john',
-      password: 'changeme',
-    },
-    {
-      userId: 2,
-      username: 'maria',
-      password: 'guess',
-    },
-  ];
-
-  async findOne(username: string): Promise<UserDTO | undefined> {
-    return this.users.find((user) => user.username === username);
+  async findOneByUsername(username: string): Promise<UserDTO | undefined> {
+    return this.userModel.findOne({ username }).exec();
   }
 
   async create(dto: UserType): Promise<User> {
@@ -33,14 +20,10 @@ export class UsersService {
     });
   }
 
-  async updateOne(id: string, dto: UserType): Promise<User | null> {
+  async updateAmount(accountNumber: string, amount: number): Promise<void> {
     return this.userModel.findOneAndUpdate(
-      { _id: id },
-      {
-        $set: {
-          ...dto,
-        },
-      },
+      { accountNumber },
+      { $inc: { balance: amount } },
       {
         new: true,
       },

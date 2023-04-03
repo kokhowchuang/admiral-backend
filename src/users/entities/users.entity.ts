@@ -18,12 +18,6 @@ export class User extends Document {
 
   @Prop()
   password: string;
-
-  @Prop()
-  accountNumber: string;
-
-  @Prop()
-  balance: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -10,15 +10,12 @@ export class UserDTO {
 
   password: string;
 
-  balance?: number;
-
   static fromModel(obj: User): UserDTO {
     const dto = new UserDTO();
 
     dto.id = obj.id;
     dto.name = obj.name;
     dto.username = obj.username;
-    dto.balance = obj.balance;
 
     return dto;
   }

@@ -1,39 +1,72 @@
+import { InsufficientAmountException } from './../exceptions/insufficient-amount.exception';
+import { AccountsService } from './../accounts/accounts.service';
+import { UsersService } from './../users/users.service';
 import { TransactionType } from './interfaces/transactions.interface';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import {
   Transaction,
   TransactionDocument,
 } from './entities/transaction.entity';
+import { REQUEST } from '@nestjs/core';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TransactionsService {
   constructor(
+    // @Inject(REQUEST) private readonly request: Request,
     @InjectModel(Transaction.name)
-    private userModel: Model<TransactionDocument>,
+    private transactionModel: Model<TransactionDocument>,
+    private readonly userService: UsersService,
+    private readonly accountService: AccountsService,
   ) {}
 
-  create(dto: TransactionType) {
-    return this.userModel.create({
+  async create(dto: TransactionType) {
+    return this.transactionModel.create({
       ...dto,
     });
   }
 
-  findAll() {
-    return `This action returns all transactions`;
+  async sendMoney(
+    receiverTransactionDto: TransactionType,
+    senderTransactionDTO: TransactionType,
+  ) {
+    const senderAccount = await this.accountService.findOneByAccountNumber(
+      senderTransactionDTO.accountNumber,
+    );
+    const isBalanceSufficient =
+      senderAccount.balance > receiverTransactionDto.amount ? true : false;
+
+    if (isBalanceSufficient) {
+      await this.create(receiverTransactionDto);
+      await this.create(senderTransactionDTO);
+
+      const result = await this.accountService.deductMoney(
+        senderTransactionDTO.accountNumber,
+        receiverTransactionDto.amount,
+      );
+
+      if (result.modifiedCount > 0) {
+        await this.accountService.receiveMoney(
+          receiverTransactionDto.accountNumber,
+          receiverTransactionDto.amount,
+        );
+      }
+    } else {
+      throw new InsufficientAmountException();
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} transaction`;
-  }
+  async topUpMoney(receiverTransactionDto: TransactionType) {
+    const receiverAccount = await this.accountService.findOneByAccountNumber(
+      receiverTransactionDto.accountNumber,
+    );
 
-  update(id: number, updateTransactionDto: UpdateTransactionDto) {
-    return `This action updates a #${id} transaction`;
-  }
+    await this.create(receiverTransactionDto);
 
-  remove(id: number) {
-    return `This action removes a #${id} transaction`;
+    await this.accountService.receiveMoney(
+      receiverTransactionDto.accountNumber,
+      receiverTransactionDto.amount,
+    );
   }
 }
